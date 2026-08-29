@@ -1,0 +1,33 @@
+# Cache files (regenerated on demand)
+backtest_cache/
+__pycache__/
+*.pyc
+
+# Charts (generated outputs)
+charts/
+charts_v2/
+charts_v3/
+*.png
+
+# Backtest results (generated)
+backtest_v2_*.csv
+results_us_*.csv
+
+# Pickle cache
+*.pkl
+
+# Debug scripts
+debug_pattern.py
+
+# Environment
+.env
+.venv/
+venv/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

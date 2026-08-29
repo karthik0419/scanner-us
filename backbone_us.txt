@@ -1,0 +1,72 @@
+# Backbone US - Top 50 High-Momentum Stocks (Curated)
+# Updated: 2026-08-29
+# Selection criteria: High liquidity (>5M avg volume), proven chart patterns, institutional favorites
+
+# FAANG+ (Mega-cap Tech)
+AAPL
+MSFT
+GOOGL
+AMZN
+META
+NVDA
+TSLA
+
+# Semiconductors (High Volatility, Clear Patterns)
+AMD
+AVGO
+QCOM
+MU
+AMAT
+LRCX
+KLAC
+ASML
+
+# Cloud/Software (Growth + Momentum)
+CRM
+ADBE
+NOW
+PANW
+CRWD
+ZS
+DDOG
+SNOW
+
+# Financials (Swing-Friendly)
+JPM
+BAC
+GS
+MS
+C
+WFC
+V
+MA
+
+# Healthcare/Biotech (Breakout Potential)
+UNH
+LLY
+JNJ
+ABBV
+TMO
+DHR
+ISRG
+GILD
+
+# Consumer/Retail (Volume Leaders)
+AMZN
+HD
+NKE
+SBUX
+MCD
+DIS
+
+# Industrials (Clear Trends)
+BA
+CAT
+UNP
+DE
+GE
+
+# Energy (Momentum + Sector Rotation)
+XOM
+CVX
+SLB
