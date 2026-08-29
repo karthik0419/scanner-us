@@ -5,17 +5,19 @@ chcp 65001 >nul 2>&1
 
 echo.
 echo  ================================================================
-echo   SCANNER-US - Weekly S&P 500 Scan (MTF only)
+echo   SCANNER-US - Weekly S&P 500 Scan (MTF only, best-only)
 echo  ================================================================
 echo.
-echo  Scanning all 503 S&P 500 stocks for swing setups.
+echo  Scans all 503 S&P 500 stocks for swing setups.
+echo  Auto-refreshes stock list from Wikipedia (picks up new listings).
 echo  Only shows MTF-confirmed setups (weekly trend aligned).
+echo  1 setup per stock (no duplicates).
 echo  Estimated time: ~10 minutes.
 echo.
 echo  Press any key to start...
 pause >nul
 
-python scanner_us.py --stocks sp500.txt --top 50 --min-score 50 --mtf-only
+python scanner_us.py --stocks sp500.txt --top 50 --min-score 50 --mtf-only --best-only
 
 echo.
 echo  ================================================================

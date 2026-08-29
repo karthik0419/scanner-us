@@ -451,7 +451,8 @@ def scan_stock(symbol):
 
 def main():
     parser = argparse.ArgumentParser(description='US Stock Scanner v2.0')
-    parser.add_argument('--stocks', default='backbone_us.txt')
+    parser.add_argument('--stocks', default='sp500.txt',
+                        help='Stock list file (default: sp500.txt). Use backbone_us.txt for quick 50-stock scan.')
     parser.add_argument('--top', type=int, default=30)
     parser.add_argument('--min-score', type=float, default=40.0)
     parser.add_argument('--test', action='store_true')
@@ -460,6 +461,8 @@ def main():
                         help='Show only 1 setup per stock (highest score). Eliminates duplicates.')
     parser.add_argument('--db-only', action='store_true',
                         help='Show only Double Bottom setups (70.7%% WR, +1.73%% expectancy in backtest)')
+    parser.add_argument('--no-refresh', action='store_true',
+                        help='Skip auto-refresh of S&P 500 list (faster, uses existing sp500.txt)')
     args = parser.parse_args()
     
     print("=" * 80)
@@ -472,10 +475,21 @@ def main():
     if not os.path.exists(stock_file):
         print(f"Error: {stock_file} not found")
         return
-    
+
+    # Auto-refresh S&P 500 list from Wikipedia (unless --no-refresh or custom list)
+    if args.stocks == 'sp500.txt' and not args.no_refresh and not args.test:
+        try:
+            from refresh_sp500 import refresh
+            print("Checking S&P 500 list for updates...")
+            refresh(check_only=False)
+            print()
+        except Exception as e:
+            print(f"  (Refresh skipped: {e})")
+            print()
+
     with open(stock_file, 'r') as f:
         symbols = [line.strip() for line in f if line.strip() and not line.startswith('#')]
-    
+
     if args.test:
         symbols = symbols[:10]
         print(f"TEST MODE: {len(symbols)} stocks")

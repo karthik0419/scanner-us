@@ -12,15 +12,15 @@ echo                SCANNER-US v2.0 - US STOCK SCANNER
 echo  ================================================================
 echo.
 echo   --- Scans ---
-echo   1.  Quick scan - Backbone 50 stocks (~2 min, MTF only)
-echo   2.  Full S&P 500 scan (~10 min, MTF only)
-echo   3.  Full S&P 500 scan - ALL setups (incl. non-MTF)
-echo   4.  Test mode - 10 stocks only (fast, ~30 sec)
-echo   5.  Custom stock list scan
+echo   1.  Daily scan - S&P 500, best setups only (~10 min, MTF)
+echo   2.  Full S&P 500 scan - ALL setups (~10 min, MTF)
+echo   3.  Full S&P 500 scan - incl. non-MTF (~10 min)
+echo   4.  Quick scan - Backbone 50 only (~2 min, MTF, best-only)
+echo   5.  Test mode - 10 stocks only (fast, ~30 sec)
+echo   6.  Custom stock list scan
 echo.
 echo   --- Smart Scans (filtered for quality) ---
-echo   6.  Best setups only - 1 per stock, no duplicates (MTF)
-echo   7.  Double Bottom only - the 70.7%% WR pattern (MTF)
+echo   7.  Double Bottom only - S&P 500 (70.7%% WR pattern, MTF)
 echo   8.  Best + Double Bottom - highest quality (MTF)
 echo.
 echo   --- Backtest ---
@@ -42,12 +42,12 @@ echo  18.  Exit
 echo.
 set /p choice="  Enter choice [1-18]: "
 
-if "%choice%"=="1" goto SCAN_BACKBONE
+if "%choice%"=="1" goto SCAN_DAILY
 if "%choice%"=="2" goto SCAN_SP500
 if "%choice%"=="3" goto SCAN_SP500_ALL
-if "%choice%"=="4" goto SCAN_TEST
-if "%choice%"=="5" goto SCAN_CUSTOM
-if "%choice%"=="6" goto SCAN_BEST
+if "%choice%"=="4" goto SCAN_BACKBONE
+if "%choice%"=="5" goto SCAN_TEST
+if "%choice%"=="6" goto SCAN_CUSTOM
 if "%choice%"=="7" goto SCAN_DB
 if "%choice%"=="8" goto SCAN_BEST_DB
 if "%choice%"=="9" goto BT_BACKBONE_3
@@ -64,17 +64,19 @@ echo  Invalid choice.
 pause
 goto MENU
 
-:SCAN_BACKBONE
+:SCAN_DAILY
 cls
-echo  === QUICK SCAN - Backbone 50 (MTF only, ~2 min) ===
+echo  === DAILY SCAN - S&P 500, best setups only (~10 min, MTF) ===
+echo  Auto-refreshes stock list, scans 503 stocks, 1 setup per stock.
 echo.
-python scanner_us.py --top 30 --mtf-only
+python scanner_us.py --top 30 --mtf-only --best-only
 pause
 goto MENU
 
 :SCAN_SP500
 cls
-echo  === FULL S&P 500 SCAN (MTF only, ~10 min) ===
+echo  === FULL S&P 500 SCAN - ALL setups (MTF, ~10 min) ===
+echo  Shows all setups (incl. duplicates across timeframes).
 echo.
 python scanner_us.py --stocks sp500.txt --top 50 --min-score 50 --mtf-only
 pause
@@ -82,9 +84,18 @@ goto MENU
 
 :SCAN_SP500_ALL
 cls
-echo  === FULL S&P 500 SCAN - ALL setups (incl. non-MTF, ~10 min) ===
+echo  === FULL S&P 500 SCAN - incl. non-MTF (~10 min) ===
 echo.
-python scanner_us.py --stocks sp500.txt --top 50 --min-score 50
+python scanner_us.py --stocks sp500.txt --top 50 --min-score 50 --no-refresh
+pause
+goto MENU
+
+:SCAN_BACKBONE
+cls
+echo  === QUICK SCAN - Backbone 50 only (~2 min, MTF, best-only) ===
+echo  Fast scan of 50 curated momentum stocks. Use for quick checks.
+echo.
+python scanner_us.py --stocks backbone_us.txt --top 30 --mtf-only --best-only --no-refresh
 pause
 goto MENU
 
@@ -92,7 +103,7 @@ goto MENU
 cls
 echo  === TEST MODE - 10 stocks (~30 sec) ===
 echo.
-python scanner_us.py --test --mtf-only
+python scanner_us.py --test --mtf-only --no-refresh
 pause
 goto MENU
 
@@ -105,23 +116,13 @@ set /p stockfile="  Enter stock list file: "
 if "%stockfile%"=="" goto MENU
 set /p topn="  Show top N [default 30]: "
 if "%topn%"=="" set topn=30
-python scanner_us.py --stocks "%stockfile%" --top %topn% --mtf-only
-pause
-goto MENU
-
-:SCAN_BEST
-cls
-echo  === BEST SETUPS ONLY - 1 per stock, no duplicates (MTF) ===
-echo  Eliminates duplicate entries (e.g., MSFT Monthly+Weekly+Daily = 1 pick)
-echo  Uses backbone_us.txt. For S&P 500, add --stocks sp500.txt manually.
-echo.
-python scanner_us.py --top 30 --mtf-only --best-only
+python scanner_us.py --stocks "%stockfile%" --top %topn% --mtf-only --best-only --no-refresh
 pause
 goto MENU
 
 :SCAN_DB
 cls
-echo  === DOUBLE BOTTOM ONLY - 70.7%% WR pattern (MTF) ===
+echo  === DOUBLE BOTTOM ONLY - S&P 500 (70.7%% WR pattern, MTF) ===
 echo  The highest-probability pattern from backtest (259 trades, +1.73%% exp).
 echo  Most days will show 0 setups - that's normal. Wait for the right ones.
 echo.
