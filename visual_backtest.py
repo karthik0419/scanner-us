@@ -29,6 +29,12 @@ from scanner_us import (
     calculate_atr, find_local_minima, check_momentum, check_higher_trend,
     CUP_HANDLE_WINDOWS, ATR_MULTIPLIER, MAX_RISK_PCT, TARGET_1_PCT, TARGET_2_PCT
 )
+from patterns import (
+    detect_bull_flag, detect_pennant,
+    detect_ascending_triangle, detect_symmetrical_triangle,
+    detect_falling_wedge, detect_channel_breakout, detect_rectangle,
+    detect_double_top, detect_inverse_head_shoulders,
+)
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -226,6 +232,29 @@ def detect_patterns_at_date(symbol, all_data, scan_date):
         r['symbol'] = symbol
         r['timeframe'] = 'Daily'
         results.append(r)
+
+    # --- NEW PATTERNS (all use daily data) ---
+    # Each detector gets df with ATR column, df_weekly for MTF check
+    new_detectors = [
+        detect_bull_flag,
+        detect_pennant,
+        detect_ascending_triangle,
+        detect_symmetrical_triangle,
+        detect_falling_wedge,
+        detect_channel_breakout,
+        detect_rectangle,
+        detect_double_top,
+        detect_inverse_head_shoulders,
+    ]
+
+    for detector in new_detectors:
+        r = detector(df, ATR_MULTIPLIER, MAX_RISK_PCT, TARGET_1_PCT, TARGET_2_PCT, df_w)
+        if r:
+            # Apply MTF confirmation
+            r['mtf_confirmed'] = check_higher_trend(df_w) if df_w is not None else True
+            r['symbol'] = symbol
+            r['timeframe'] = 'Daily'
+            results.append(r)
 
     return results
 
