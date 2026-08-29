@@ -75,7 +75,12 @@ def get_stock_data(symbol, period='2y'):
         ticker = yf.Ticker(symbol)
         df = ticker.history(period=period, interval='1d', auto_adjust=True)
         if df.empty or len(df) < 100:
-            return None, None
+            return None, None, None
+        
+        # Drop rows with NaN Close (incomplete/current day)
+        df = df.dropna(subset=['Close'])
+        if len(df) < 100:
+            return None, None, None
         
         df['ATR'] = calculate_atr(df)
         
@@ -89,11 +94,11 @@ def get_stock_data(symbol, period='2y'):
         info = ticker.info
         
         if info.get('averageVolume', 0) < MIN_VOLUME:
-            return None, None
+            return None, None, None
         if info.get('marketCap', 0) < MIN_MARKET_CAP:
-            return None, None
+            return None, None, None
         if df['Close'].iloc[-1] < MIN_PRICE:
-            return None, None
+            return None, None, None
         
         return df, info, df_weekly
     except Exception as e:

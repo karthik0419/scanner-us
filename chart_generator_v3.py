@@ -32,6 +32,12 @@ def create_chart_v3(symbol, pattern_data=None, save_path=None):
         print(f"No data for {symbol}")
         return None
     
+    # Drop rows with NaN Close (incomplete/current day)
+    df = df.dropna(subset=['Close'])
+    if df.empty:
+        print(f"No complete data for {symbol}")
+        return None
+    
     # Create figure (larger for clarity)
     fig, ax1 = plt.subplots(1, 1, figsize=(18, 10), facecolor='#0e0e0e')
     

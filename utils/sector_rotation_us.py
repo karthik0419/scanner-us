@@ -46,8 +46,11 @@ def get_sector_heat(lookback_short=5, lookback_long=20):
                              progress=False, auto_adjust=True)
             if df is None or df.empty:
                 continue
+            # Handle MultiIndex columns from yfinance (newer versions)
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
+            # Drop rows with NaN Close (incomplete/current day)
+            df = df.dropna(subset=['Close'])
             if len(df) < lookback_long + 2:
                 continue
 
