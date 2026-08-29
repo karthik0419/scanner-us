@@ -1,0 +1,26 @@
+Add --best-only and --db-only flags for quality filtering
+
+New scanner flags:
+- --best-only: Show only 1 setup per stock (highest score). Eliminates
+  duplicates where same stock appears 3x (Monthly+Weekly+Daily).
+  Tested: 12 setups -> 4 unique stocks (MSFT, AAPL, GOOGL, META)
+- --db-only: Show only Double Bottom setups (the 70.7% WR, +1.73% exp
+  pattern from 274-trade backtest). Most days show 0 - that's correct.
+  Tested: 12 setups -> 0 (no double bottoms today, normal)
+
+Scanner.bat updated:
+- Added "Smart Scans" section (options 6-8):
+  6. Best setups only (1 per stock, no duplicates)
+  7. Double Bottom only (70.7% WR pattern)
+  8. Best + Double Bottom (highest quality)
+- Added Refresh S&P 500 option (17) with 3-step guided workflow
+- Renumbered all menu items (now 18 options)
+
+Usage:
+  python scanner_us.py --mtf-only --best-only         # 1 per stock
+  python scanner_us.py --mtf-only --db-only           # double bottoms only
+  python scanner_us.py --mtf-only --db-only --best-only  # both filters
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

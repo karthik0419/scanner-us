@@ -456,6 +456,10 @@ def main():
     parser.add_argument('--min-score', type=float, default=40.0)
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--mtf-only', action='store_true', help='Only show MTF-confirmed setups')
+    parser.add_argument('--best-only', action='store_true',
+                        help='Show only 1 setup per stock (highest score). Eliminates duplicates.')
+    parser.add_argument('--db-only', action='store_true',
+                        help='Show only Double Bottom setups (70.7%% WR, +1.73%% expectancy in backtest)')
     args = parser.parse_args()
     
     print("=" * 80)
@@ -504,7 +508,22 @@ def main():
     if args.mtf_only:
         filtered = [r for r in filtered if r.get('mtf_confirmed', False)]
         print(f"MTF-confirmed only: {len(filtered)} setups")
-    
+
+    # --db-only: Double Bottom only (the 70.7% WR pattern)
+    if args.db_only:
+        filtered = [r for r in filtered if 'Double Bottom' in r['pattern']]
+        print(f"Double Bottom only: {len(filtered)} setups")
+
+    # --best-only: 1 setup per stock (highest score)
+    if args.best_only:
+        seen = {}
+        for r in filtered:
+            sym = r['symbol']
+            if sym not in seen or r['score'] > seen[sym]['score']:
+                seen[sym] = r
+        filtered = list(seen.values())
+        print(f"Best-only (1 per stock): {len(filtered)} setups")
+
     filtered.sort(key=lambda x: x['score'], reverse=True)
     top_picks = filtered[:args.top]
     
