@@ -210,13 +210,13 @@ def detect_patterns_at_date(symbol, all_data, scan_date):
     results = []
 
     # Cup & Handle — use the correct timeframe data for each
-    # Daily: daily bars, Weekly: weekly bars, Monthly: monthly bars
+    # DROPPED: Daily (PF 0.42, 22% WR — losing money)
+    # KEEP: Weekly (PF 2.04, 57% WR), Monthly (rare but potentially good)
     timeframe_data = {
-        'Daily': df,
         'Weekly': df_w,
         'Monthly': df_m,
     }
-    for timeframe in ['Daily', 'Weekly', 'Monthly']:
+    for timeframe in ['Weekly', 'Monthly']:
         tf_df = timeframe_data[timeframe]
         if tf_df is None or len(tf_df) < 40:
             continue
@@ -234,15 +234,16 @@ def detect_patterns_at_date(symbol, all_data, scan_date):
         results.append(r)
 
     # --- NEW PATTERNS (all use daily data) ---
-    # Each detector gets df with ATR column, df_weekly for MTF check
+    # DROPPED: Rectangle (PF 1.08, 48% WR — barely profitable)
+    # DROPPED: C&H Daily (PF 0.42, 22% WR — losing money)
+    # EXPERIMENTAL: Symmetrical Triangle (PF 1.96, marginal)
+    # KEEP: Falling Wedge, Double Top BO, Inverse H&S, Channel BO, Asc Triangle
     new_detectors = [
         detect_bull_flag,
         detect_pennant,
         detect_ascending_triangle,
-        detect_symmetrical_triangle,
         detect_falling_wedge,
         detect_channel_breakout,
-        detect_rectangle,
         detect_double_top,
         detect_inverse_head_shoulders,
     ]
