@@ -222,6 +222,36 @@ actual_entry = min(entry_price, best['entry'])  # Use breakout if gapped up
 
 **Impact of fix:** Win rate jumped from 45% → 74%, return from -25% → +61%.
 
+### Bug 6: C&H Weekly/Monthly used daily data (CRITICAL)
+
+**The problem:**
+Both `scanner_us.py` and `visual_backtest.py` passed the **daily** dataframe to `detect_cup_and_handle()` for ALL timeframes. The `timeframe` parameter only changed the window size, not the data:
+
+```python
+# BROKEN — all 3 timeframes used daily data
+for timeframe in ['Daily', 'Weekly', 'Monthly']:
+    r = detect_cup_and_handle(df, timeframe, df_weekly)  # df is always daily!
+```
+
+- "Weekly" C&H used 30 daily bars (~6 weeks) instead of 30 weekly bars (~30 weeks)
+- "Monthly" C&H used 24 daily bars (~5 weeks) instead of 24 monthly bars (~2 years)
+- Daily and Weekly had identical windows (30, 4) so produced identical results
+- Backtest showed **0 C&H Weekly trades** (Daily always won ties)
+- Live scanner showed C&H Weekly with same entry/SL as Daily (identical)
+
+**The fix:**
+```python
+# FIXED — each timeframe uses its own resampled data
+df_monthly = df.resample('ME').agg({...})  # Create monthly bars
+
+timeframe_data = {'Daily': df, 'Weekly': df_weekly, 'Monthly': df_monthly}
+for timeframe in ['Daily', 'Weekly', 'Monthly']:
+    tf_df = timeframe_data[timeframe]
+    r = detect_cup_and_handle(tf_df, timeframe, df_weekly)  # Correct data!
+```
+
+**Impact of fix:** Backtest now shows 23 C&H Weekly trades with 52.2% WR, +1.65% expectancy. This was the 2nd-best pattern, completely hidden by the bug.
+
 ---
 
 ## Multi-Timeframe Confirmation
@@ -265,7 +295,33 @@ In the 5-year backtest, the MTF filter kept the scanner OUT of the market during
 
 ## Backtest Results
 
-### 5-Year Backtest (backbone_us.txt, 50 stocks, MTF-confirmed)
+### S&P 500 — 5-Year Backtest (293 trades, MTF-confirmed)
+
+| Metric | Value |
+|---|---|
+| **Total trades** | 293 |
+| **Win rate** | **69.0%** |
+| **Avg win** | +4.4% |
+| **Avg loss** | -4.3% |
+| **Expectancy** | **+1.62% per trade** |
+| **Profit factor** | **2.20** |
+| **Max drawdown** | -36.3% |
+| **Total return** | **+442.1%** |
+| **CAGR** | **+40.2%** |
+| **Backtest time** | 5.6 minutes (cached) |
+
+### Pattern breakdown (post C&H Weekly fix)
+
+| Pattern | Trades | Win Rate | Expectancy | PF | Verdict |
+|---|---|---|---|---|---|
+| **Double Bottom** | 259 | **71.0%** | **+1.73%** | **2.46** | ✅ Star pattern |
+| **C&H Weekly** | 23 | **52.2%** | **+1.65%** | **1.56** | ✅ Good (2nd best) |
+| C&H Daily | 11 | 36.4% | -0.37% | 0.84 | ❌ Loser |
+| C&H Monthly | 0 | — | — | — | Not detected (rare) |
+
+**Key finding:** C&H Weekly is profitable (+1.65% expectancy). Before the timeframe bug fix (see Bug 6 below), the backtest showed 0 C&H Weekly trades — the bug hid the data.
+
+### Backbone 50 — 5-Year Backtest (27 trades, small sample)
 
 | Metric | Value |
 |---|---|
@@ -278,16 +334,8 @@ In the 5-year backtest, the MTF filter kept the scanner OUT of the market during
 | **Max drawdown** | -14.9% |
 | **Total return** | **+61.6%** |
 | **CAGR** | +10.1% |
-| **Backtest time** | 0.6 minutes (cached) |
 
-### Pattern breakdown
-
-| Pattern | Trades | Win Rate | Expectancy |
-|---|---|---|---|
-| **Double Bottom** | 24 | **83.3%** | **+3.25%** |
-| Cup & Handle (Daily) | 3 | 0.0% | -5.49% |
-
-### 3-Year Backtest (same stocks)
+### Backbone 50 — 3-Year Backtest
 
 | Metric | Value |
 |---|---|
@@ -301,27 +349,27 @@ In the 5-year backtest, the MTF filter kept the scanner OUT of the market during
 
 ### How the backtest works
 
-1. **Download all data ONCE** — 50 stocks × 5 years = ~3 minutes, cached to `backtest_cache/all_stocks_5y.pkl`
+1. **Download all data ONCE** — 503 stocks × 5 years = ~3 minutes, cached to `backtest_cache/all_stocks_5y.pkl`
 2. **Generate scan dates** — Every 14 days (bi-weekly) starting from first Monday
 3. **Replay day-by-day** — At each scan date, detect patterns using only data up to that date
 4. **Enter trades** — On BREAKOUT status, enter next day at open (or breakout if gapped up)
 5. **Exit trades** — At T1 (win), stop loss (loss), or 45 days (time exit)
 6. **Track equity** — Starting $10,000, no compounding (fixed position size)
-7. **Generate equity curve** — Visual chart saved to `backtest_equity_YYYYMMDD.png`
+7. **Generate equity curve** — Visual chart saved to `backtest_results/equity_curve_sp500_5yr_v2.png`
 
 ### Comparison: scanner-us vs scanner-v3 (India)
 
 | Metric | scanner-v3 (India) | scanner-us (US) |
 |---|---|---|
-| Trades | 3,012 | 27 |
-| Win rate | 40.6% | **74.1%** |
-| Avg win | +7.6% | +4.9% |
-| Avg loss | -3.0% | -5.1% |
-| Expectancy | +1.30% | **+2.28%** |
-| Profit factor | 1.73 | **2.71** |
-| Max DD | -60.1% | **-14.9%** |
+| Trades | 3,012 | 293 |
+| Win rate | 40.6% | **69.0%** |
+| Avg win | +7.6% | +4.4% |
+| Avg loss | -3.0% | -4.3% |
+| Expectancy | +1.30% | **+1.62%** |
+| Profit factor | 1.73 | **2.20** |
+| Max DD | -60.1% | -36.3% |
 
-**Note:** scanner-v3 has 3,012 trades (large sample, statistically significant). scanner-us has 27 trades (small sample, survivorship bias possible — see [Honest Caveats](#honest-caveats)).
+**Note:** scanner-v3 has 3,012 trades (large sample). scanner-us has 293 trades (statistically significant, but survivorship bias possible — see [Honest Caveats](#honest-caveats)).
 
 ---
 
@@ -343,20 +391,33 @@ In the 5-year backtest, the MTF filter kept the scanner OUT of the market during
 ```
 scanner-us/
 ├── scanner_us.py              # Main scanner (v2.0)
-│   ├── get_stock_data()       # Fetch + cache stock data
-│   ├── detect_cup_and_handle()# C&H pattern detection
+│   ├── get_stock_data()       # Fetch + cache stock data (daily/weekly/monthly)
+│   ├── detect_cup_and_handle()# C&H pattern detection (per timeframe)
 │   ├── detect_double_bottom() # Double Bottom detection
 │   ├── check_momentum()       # 5D vs 10D momentum
 │   ├── check_higher_trend()   # Weekly 50-SMA trend
 │   ├── calculate_score()      # Scoring with MTF bonus
-│   └── scan_stock()           # Single stock scan
+│   └── scan_stock()           # Single stock scan (passes correct tf df)
 │
 ├── visual_backtest.py         # Cached backtest engine
-│   ├── download_and_cache()   # One-time data download
-│   ├── detect_patterns_at_date() # Historical pattern detection
+│   ├── download_and_cache()   # One-time data download (daily/weekly/monthly)
+│   ├── detect_patterns_at_date() # Historical pattern detection (correct tf)
 │   ├── Trade class            # Trade tracking
 │   ├── run_backtest()         # Main backtest loop
 │   └── plot_equity_curve()    # Visual equity curve
+│
+├── refresh_sp500.py           # Auto-refresh S&P 500 from Wikipedia
+│   ├── fetch_sp500_from_wikipedia() # Scrape Wikipedia constituents table
+│   └── refresh()              # Compare + update sp500.txt + sectors
+│
+├── paper_tracker.py           # Paper trade tracker
+│   ├── init_tracker()         # Init from scan results CSV
+│   ├── update_tracker()       # Fetch prices, check breakouts/SL/T1/T2
+│   ├── status()               # Show all trades
+│   └── summary()              # One-line summary
+│
+├── analyze_patterns.py        # Pattern stats by timeframe
+├── upgrade_cache.py           # Add monthly data to existing cache
 │
 ├── chart_generator_v3.py      # Chart generator
 │   ├── Cup shape drawing      # scipy spline interpolation
@@ -476,22 +537,25 @@ Tracks 11 S&P sectors via SPDR ETFs:
 
 | File | Purpose |
 |---|---|
-| `scanner_us.py` | Main scanner (v2.0 - MTF confirmation + bug fixes) |
-| `visual_backtest.py` | Cached backtest engine (incremental refresh support) |
+| `scanner_us.py` | Main scanner (v2.0 - MTF confirmation, correct timeframe data) |
+| `visual_backtest.py` | Cached backtest engine (incremental refresh, monthly data) |
 | `chart_generator_v3.py` | Chart generator with pattern overlay |
 | `verify_picks.py` | Validate entry/SL/targets correctness |
 | `refresh_sp500.py` | Auto-refresh S&P 500 list from Wikipedia |
-| `Scanner.bat` | Main menu (14 options: scans, backtests, charts, verify) |
-| `Daily Scan.bat` | One-click daily scan (backbone 50, MTF only) |
-| `Weekly Scan.bat` | One-click weekly S&P 500 scan |
+| `paper_tracker.py` | Paper trade tracker (NEAR waits for breakout, auto SL/T1/T2) |
+| `analyze_patterns.py` | Pattern stats by timeframe (win rate, expectancy, PF) |
+| `upgrade_cache.py` | Add monthly data to existing cache (in-place upgrade) |
+| `Scanner.bat` | Main menu (18 options: scans, backtests, charts, verify, refresh) |
+| `Daily Scan.bat` | One-click daily scan (S&P 500, MTF, best-only) |
+| `Weekly Scan.bat` | One-click weekly S&P 500 scan (best-only) |
 | `Backtest.bat` | Backtest menu (3yr/5yr/test) |
 | `utils/sector_rotation_us.py` | S&P sector rotation tracking |
 | `sp500.txt` | S&P 500 stock list (503 symbols, auto-refreshable) |
 | `sp500_sectors.json` | Symbol → GICS sector mapping |
-| `backbone_us.txt` | Top 50 curated momentum stocks |
+| `backbone_us.txt` | Top 50 curated momentum stocks (quick scan) |
 | `requirements.txt` | Python dependencies |
-| `backtest_cache/` | Cached stock data (pickle files) |
-| `backtest_results/` | Backtest results + equity curve |
+| `backtest_cache/` | Cached stock data (pickle files, daily/weekly/monthly) |
+| `backtest_results/` | Backtest results + equity curves |
 
 ---
 

@@ -15,6 +15,38 @@
 | Crashing stocks | Showed as NEAR | **Filtered out** (price must be above bottom 2) |
 | Handle validation | Any handle accepted | **Must be within 15% of right rim** |
 | NEAR status | Any stock within 5% | **Only if RISING** (5D close > 10D close) |
+| **C&H Weekly/Monthly data** | **Daily df used for ALL timeframes** | **Each timeframe uses own resampled data** |
+| NaN Close rows | Crashed scanner/charts | **Dropped** (incomplete trading day) |
+| Default stock list | backbone_us.txt (50 stocks) | **sp500.txt (503 stocks, auto-refresh)** |
+
+### C&H Weekly/Monthly Timeframe Fix (CRITICAL)
+
+**Root cause:** `detect_cup_and_handle()` was called with the daily dataframe for ALL timeframes. The `timeframe` parameter only changed the window size, not the data:
+
+```python
+# BROKEN — all 3 timeframes used daily data
+for timeframe in ['Daily', 'Weekly', 'Monthly']:
+    r = detect_cup_and_handle(df, timeframe, df_weekly)  # df is always daily!
+```
+
+- "Weekly" C&H used 30 daily bars (~6 weeks) instead of 30 weekly bars (~30 weeks)
+- "Monthly" C&H used 24 daily bars (~5 weeks) instead of 24 monthly bars (~2 years)
+- Daily and Weekly had identical windows (30, 4) so produced identical results
+- Backtest showed **0 C&H Weekly trades** (Daily always won ties)
+- Live scanner showed C&H Weekly with same entry/SL as Daily
+
+**Fix:** Each timeframe now uses its own resampled data:
+
+```python
+df_monthly = df.resample('ME').agg({...})  # Create monthly bars
+
+timeframe_data = {'Daily': df, 'Weekly': df_weekly, 'Monthly': df_monthly}
+for timeframe in ['Daily', 'Weekly', 'Monthly']:
+    tf_df = timeframe_data[timeframe]
+    r = detect_cup_and_handle(tf_df, timeframe, df_weekly)  # Correct data!
+```
+
+**Impact:** Backtest now shows 23 C&H Weekly trades with 52.2% WR, +1.65% expectancy. This was the 2nd-best pattern, completely hidden by the bug.
 
 ### Multi-Timeframe Confirmation (NEW)
 
@@ -23,6 +55,26 @@
 - MTF-confirmed setups: **+15 score bonus**
 - Non-MTF setups: **-10 score penalty**
 - `--mtf-only` flag shows only MTF-confirmed setups
+
+### Quality Filters (NEW)
+
+- `--best-only`: 1 setup per stock (highest score), eliminates duplicates
+- `--db-only`: Double Bottom only (the 71% WR star pattern)
+- `--no-refresh`: Skip Wikipedia auto-refresh (faster startup)
+
+### Auto-Refresh + Incremental Cache (NEW)
+
+- `refresh_sp500.py`: Fetches current S&P 500 from Wikipedia, updates sp500.txt
+- Scanner auto-refreshes before each scan (unless `--no-refresh`)
+- `--refresh-cache`: Downloads only NEW stocks, merges into existing cache
+
+### Paper Tracker (NEW)
+
+- `paper_tracker.py`: Tracks live picks from scan results
+- NEAR picks: `WAITING_BREAKOUT` → enter when price crosses breakout level
+- BREAKOUT picks: entered immediately
+- Daily update checks: SL (loss), T1 (hold for T2), T2 (win), 45-day time exit
+- Commands: `init`, `update`, `status`, `summary`
 
 ### Validation Results (2026-08-29)
 
