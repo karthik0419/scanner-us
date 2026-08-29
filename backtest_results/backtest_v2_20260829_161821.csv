@@ -1,0 +1,2 @@
+symbol,pattern,entry_date,entry_price,exit_date,exit_price,exit_reason,pnl_pct,days_held,mtf
+NVDA,Double Bottom,2026-01-06 00:00:00-05:00,190.2879203285983,2026-01-20 00:00:00-05:00,177.9986163912577,LOSS,-6.458268037255764,14,True

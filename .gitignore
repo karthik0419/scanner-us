@@ -3,21 +3,17 @@ backtest_cache/
 __pycache__/
 *.pyc
 
-# Charts (generated outputs)
+# Charts (generated outputs, too many files)
 charts/
 charts_v2/
 charts_v3/
-*.png
-
-# Backtest results (generated)
-backtest_v2_*.csv
-results_us_*.csv
 
 # Pickle cache
 *.pkl
 
-# Debug scripts
+# Debug/temp scripts
 debug_pattern.py
+fix_backtest.py
 
 # Environment
 .env

@@ -496,7 +496,9 @@ def run_backtest(symbols, years, capital=10000, mtf_only=True, visual=False):
             trade.exit_price = df['Close'].iloc[-1]
             trade.exit_reason = 'BACKTEST_END'
             trade.pnl_pct = (trade.exit_price - trade.entry_price) / trade.entry_price * 100
-            trade.days_held = (trade.exit_date - trade.entry_date).days
+            entry_date_naive = trade.entry_date.tz_localize(None) if trade.entry_date.tzinfo else trade.entry_date
+            exit_date_naive = trade.exit_date.tz_localize(None) if trade.exit_date.tzinfo else trade.exit_date
+            trade.days_held = (exit_date_naive - entry_date_naive).days
             closed_trades.append(trade)
     
     elapsed_total = (time.time() - start_time) / 60
@@ -641,8 +643,15 @@ def plot_equity_curve(equity_curve, capital, trades, total_return, win_rate):
     for t in trades:
         if t.exit_date and t.entry_date:
             color = '#00ff00' if t.pnl_pct > 0 else '#ff0000'
+            # Normalize exit_date to tz-naive for comparison
+            exit_d = t.exit_date
+            if hasattr(exit_d, 'tzinfo') and exit_d.tzinfo is not None:
+                exit_d = exit_d.tz_localize(None)
             # Find equity at exit date
-            ax1.scatter(t.exit_date, capital + sum(x.pnl_pct for x in trades if x.exit_date <= t.exit_date) / 100 * capital,
+            cum_pnl = sum(x.pnl_pct for x in trades
+                         if x.exit_date is not None
+                         and (x.exit_date.tz_localize(None) if hasattr(x.exit_date, 'tzinfo') and x.exit_date.tzinfo else x.exit_date) <= exit_d)
+            ax1.scatter(exit_d, capital + cum_pnl / 100 * capital,
                        color=color, s=30, alpha=0.6, zorder=5)
     
     ax1.set_title(f'Backtest Equity Curve | Return: {total_return:+.1f}% | Win Rate: {win_rate:.1f}%',
