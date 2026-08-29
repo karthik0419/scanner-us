@@ -50,7 +50,16 @@ python chart_generator_v3.py --batch results_us_2026-08-29.csv --top 5
 # Backtest (cached data, no rate limiting)
 python visual_backtest.py --stocks backbone_us.txt --years 5 --visual
 python visual_backtest.py --stocks sp500.txt --years 5 --visual
+
+# Refresh S&P 500 stock list (from Wikipedia)
+python refresh_sp500.py --check    # dry run, show changes
+python refresh_sp500.py            # apply changes
+
+# After refresh, update cache incrementally (only new stocks)
+python visual_backtest.py --stocks sp500.txt --years 5 --refresh-cache --visual
 ```
+
+Or just double-click **`Scanner.bat`** for a menu-driven interface.
 
 ---
 
@@ -468,15 +477,21 @@ Tracks 11 S&P sectors via SPDR ETFs:
 | File | Purpose |
 |---|---|
 | `scanner_us.py` | Main scanner (v2.0 - MTF confirmation + bug fixes) |
-| `visual_backtest.py` | Cached backtest engine (no rate limiting) |
+| `visual_backtest.py` | Cached backtest engine (incremental refresh support) |
 | `chart_generator_v3.py` | Chart generator with pattern overlay |
 | `verify_picks.py` | Validate entry/SL/targets correctness |
+| `refresh_sp500.py` | Auto-refresh S&P 500 list from Wikipedia |
+| `Scanner.bat` | Main menu (14 options: scans, backtests, charts, verify) |
+| `Daily Scan.bat` | One-click daily scan (backbone 50, MTF only) |
+| `Weekly Scan.bat` | One-click weekly S&P 500 scan |
+| `Backtest.bat` | Backtest menu (3yr/5yr/test) |
 | `utils/sector_rotation_us.py` | S&P sector rotation tracking |
-| `sp500.txt` | S&P 500 stock list (503 symbols) |
+| `sp500.txt` | S&P 500 stock list (503 symbols, auto-refreshable) |
 | `sp500_sectors.json` | Symbol → GICS sector mapping |
 | `backbone_us.txt` | Top 50 curated momentum stocks |
 | `requirements.txt` | Python dependencies |
 | `backtest_cache/` | Cached stock data (pickle files) |
+| `backtest_results/` | Backtest results + equity curve |
 
 ---
 
@@ -559,6 +574,39 @@ python visual_backtest.py --stocks backbone_us.txt --years 5 --no-mtf --visual
 3. Detects patterns at each historical date
 4. Enters trades on BREAKOUT, exits at T1/SL/45 days
 5. Generates equity curve chart
+
+### 7. Refresh S&P 500 Stock List
+
+S&P 500 changes a few times/year (new IPOs added, bankruptcies/delisting removed). Keep your stock list current:
+
+```powershell
+# Check what changed (dry run, no files written)
+python refresh_sp500.py --check
+
+# Apply changes (updates sp500.txt + sp500_sectors.json)
+python refresh_sp500.py
+```
+
+**After refreshing**, update the cache incrementally (only downloads NEW stocks):
+
+```powershell
+# Only download stocks not already in cache, merge into existing cache
+python visual_backtest.py --stocks sp500.txt --years 5 --refresh-cache --visual
+```
+
+**How incremental cache works:**
+1. Loads existing cache (503 stocks)
+2. Compares with current `sp500.txt`
+3. Downloads ONLY the new stocks (e.g., 2 new = ~10 seconds)
+4. Merges into cache
+5. Runs backtest on all stocks
+
+| Situation | What happens | Time |
+|---|---|---|
+| First run | Download all 503 stocks | ~3 min |
+| Run again next day | Load from cache (< 24h old) | 0.5 min |
+| After `refresh_sp500.py` | `--refresh-cache` downloads only new stocks | ~10 sec per stock |
+| Cache > 24h old | Full re-download | ~3 min |
 
 ---
 

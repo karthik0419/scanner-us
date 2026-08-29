@@ -87,12 +87,23 @@ All 6 test picks validated:
 ### **Data Flow**
 
 1. **Input:** Stock symbol list (sp500.txt, backbone_us.txt)
+   - `refresh_sp500.py` auto-updates sp500.txt from Wikipedia (run monthly)
 2. **Fetch:** Download 1 year of OHLCV data via yfinance
+   - NaN Close rows (incomplete trading day) are dropped
 3. **Filter:** Skip if volume <500k, market cap <$500M, price <$5
 4. **Detect:** Run Cup & Handle (D/W/M) + Double Bottom algorithms
 5. **Score:** Calculate final score (base + bonuses - penalties)
 6. **Rank:** Sort by score descending, take top N
 7. **Output:** Print to console, save to CSV
+
+### **Backtest Data Flow**
+
+1. **Download:** All stock data downloaded ONCE, cached to `backtest_cache/all_stocks_5y.pkl`
+2. **Incremental refresh:** `--refresh-cache` downloads only NEW stocks (after `refresh_sp500.py`)
+3. **Replay:** Day-by-day from cache (no API calls during backtest)
+4. **Detect:** Patterns detected at each historical scan date (every 14 days)
+5. **Trade:** Enter on BREAKOUT, exit at T1/SL/45 days
+6. **Report:** Win rate, expectancy, profit factor, equity curve chart
 
 ---
 

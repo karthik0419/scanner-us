@@ -1,267 +1,242 @@
 # Getting Started with scanner-us (v2.0)
 
-**You now have a production-ready US stock scanner with multi-timeframe confirmation.** Here's what to do next.
+**Production-ready US stock scanner with multi-timeframe confirmation, cached backtest, and auto-refreshing stock list.**
 
 ---
 
-## ✅ What You Have
+## Quick Start (3 commands)
 
-### **Files Created:**
+```powershell
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Run quick scan (50 stocks, ~2 min)
+python scanner_us.py --mtf-only
+
+# 3. Run 5-year backtest (S&P 500, ~15 min first time, ~5 min after)
+python visual_backtest.py --stocks sp500.txt --years 5 --visual
+```
+
+Or just double-click **`Scanner.bat`** for a menu-driven interface.
+
+---
+
+## One-Click .bat Files
+
+| File | Purpose | Time |
+|---|---|---|
+| **`Scanner.bat`** | Main menu (14 options: scans, backtests, charts, verify) | — |
+| **`Daily Scan.bat`** | Quick scan — backbone 50, MTF only | ~2 min |
+| **`Weekly Scan.bat`** | Full S&P 500 scan, MTF only | ~10 min |
+| **`Backtest.bat`** | Backtest menu (3yr/5yr/test) | 3-15 min |
+
+---
+
+## What You Have
 
 ```
 scanner-us/
-├── scanner_us.py                    # Main scanner v2.0 (MTF confirmation + bug fixes)
-├── chart_generator_v3.py            # Chart generator with pattern overlay
-├── verify_picks.py                  # Validate entry/SL/targets correctness
+├── scanner_us.py              # Main scanner v2.0 (MTF confirmation)
+├── visual_backtest.py         # Cached backtest engine (incremental refresh)
+├── chart_generator_v3.py      # Chart generator with pattern overlay
+├── verify_picks.py            # Validate entry/SL/targets
+├── refresh_sp500.py           # Auto-refresh S&P 500 list from Wikipedia
+├── Scanner.bat                # Main menu (.bat)
+├── Daily Scan.bat             # Quick scan (.bat)
+├── Weekly Scan.bat            # Full S&P 500 scan (.bat)
+├── Backtest.bat               # Backtest menu (.bat)
 ├── utils/
-│   └── sector_rotation_us.py        # S&P sector rotation
-├── sp500.txt                        # S&P 500 stock list (503 symbols)
-├── sp500_sectors.json               # Symbol → GICS sector mapping
-├── backbone_us.txt                  # Top 50 curated momentum stocks
-├── requirements.txt                 # Python dependencies
-├── README.md                        # Full documentation
-├── GETTING_STARTED.md               # This file
-└── TECHNICAL_DEEP_DIVE.md           # Architecture + algorithms
+│   └── sector_rotation_us.py  # S&P sector rotation (11 ETFs)
+├── sp500.txt                  # S&P 500 stock list (503 symbols, auto-refreshable)
+├── sp500_sectors.json         # Symbol -> GICS sector mapping
+├── backbone_us.txt            # Top 50 curated momentum stocks
+├── requirements.txt           # Python dependencies
+├── README.md                  # Full documentation
+├── GETTING_STARTED.md         # This file
+├── TECHNICAL_DEEP_DIVE.md     # Architecture + algorithms
+└── backtest_results/          # Backtest results + equity curve
+    ├── BACKTEST_RESULTS.md
+    ├── sp500_5yr_274trades.csv
+    ├── equity_curve_sp500_5yr.png
+    └── scan_results_2026-08-29.csv
 ```
 
 ---
 
-## 📊 Validated Test Results (2026-08-29)
+## Backtest Results (Validated)
 
-**Scanned:** 10 stocks (test mode)  
-**Found:** 18 MTF-confirmed setups  
-**All validated:** Stop < Entry < T1 < T2, Risk ≤ 8%, R:R ≥ 1.5
+### S&P 500 — 5-Year Backtest (274 trades, statistically significant)
 
-**Top 6 Picks (all MTF-confirmed):**
+| Metric | Value |
+|---|---|
+| **Total trades** | 274 |
+| **Win rate** | **69.0%** |
+| **Expectancy** | **+1.62% per trade** |
+| **Profit factor** | **2.30** |
+| **Max drawdown** | -23.4% |
+| **Total return** | **+442.1%** |
+| **CAGR** | **+40.2%** |
 
-| # | Symbol | Pattern | CMP | Entry | Stop | T1 | R:R | Score |
-|---|---|---|---|---|---|---|---|---|
-| 1 | **MSFT** | C&H Monthly | $513 | $518 | $498 (3.8%) | $581 | 3.2x | 120 |
-| 2 | **QCOM** | C&H Weekly | $164 | $167 | $159 (4.7%) | $184 | 2.1x | 106 |
-| 3 | **GOOGL** | C&H Monthly | $347 | $352 | $339 (3.7%) | $379 | 2.1x | 102 |
-| 4 | **META** | C&H Weekly | $576 | $593 | $561 (5.4%) | $653 | 1.9x | 100 |
-| 5 | **AMZN** | C&H Monthly | $266 | $268 | $256 (4.3%) | $296 | 2.4x | 99 |
-| 6 | **AAPL** | C&H Weekly | $320 | $322 | $310 (3.7%) | $343 | 1.7x | 98 |
+### Pattern breakdown:
 
-**All picks:**
-- ✅ Within 3% of breakout (NEAR)
-- ✅ Rising (5D > 10D momentum)
-- ✅ MTF confirmed (weekly trend bullish)
-- ✅ Risk from entry (not CMP)
-- ✅ Sectors verified (Info Tech RISING, Communication Services)
-
----
-
-## 🚀 Next Steps
-
-### **TODAY: Validate with Backtest**
-
-```powershell
-# Install dependencies (if not already done)
-pip install -r requirements.txt
-
-# Run backtest on S&P 500 (2 years of data)
-# This will take ~20-30 minutes
-python backtest_us.py --stocks sp500.txt --years 2
-
-# Expected results (based on scanner-v3 India):
-#   Win rate: ~38-42%
-#   Expectancy: +1.2-1.5% per trade
-#   Profit factor: 1.6-1.8
-#   Max drawdown: -18-25%
-```
-
-**If backtest validates (expectancy >+1.0%), you're ready to trade real money.**
-
----
-
-### **THIS WEEK: Paper Trade**
-
-1. Run weekly scan:
-   ```powershell
-   python scanner_us.py --stocks sp500.txt --top 30
-   ```
-
-2. Pick top 5 setups (highest scores, NEAR or BREAKOUT status)
-
-3. Track in Excel/Google Sheets:
-   ```
-   Symbol | Entry | Stop | Target | Entry Date | Exit Date | P&L%
-   AAPL   | 320   | 308  | 341    | 2026-08-29 | TBD       | TBD
-   ```
-
-4. Wait 2-4 weeks, compare paper results vs backtest expectancy
-
----
-
-### **NEXT 2 WEEKS: Build YouTube Automation**
-
-1. **Create Shorts generator script** (I can build this for you)
-   - Input: `results_us_2026-08-28.csv` (from scanner)
-   - Output: 30 MP4 files (chart + voiceover + captions)
-
-2. **Post 2 Shorts/day** for 14 days (28 total)
-   - Titles: "AAPL Breakout Setup - 3.2x R:R"
-   - Description: "Entry $320, Stop $308, Target $341"
-   - Hashtags: #stockmarket #trading #AAPL
-
-3. **Track analytics** (YouTube Studio)
-   - What % of views are from US/India?
-   - Which Shorts hit >1k views?
-   - Optimize based on data
-
----
-
-### **MONTH 2-3: Scale to Revenue**
-
-**Target:** 1M-5M views/month → Rs 20k-1L/month
-
-1. Post 3 Shorts/day (90/month)
-2. Add affiliate links (Webull, TradingView) in descriptions
-3. Build email list (free Discord → premium upsell)
-4. Launch premium tier ($10/mo) once you have 5k+ followers
-
----
-
-## 📈 What Makes This Valuable
-
-### **US vs India Market Size:**
-
-| Metric | India (NSE) | US (NYSE/NASDAQ) | Multiplier |
+| Pattern | Trades | Win Rate | Expectancy |
 |---|---|---|---|
-| Retail traders | 20M | **300M** | **15x** |
-| Market cap | $4T | **$50T** | **12x** |
-| YouTube CPM | Rs 0.40-4 | **Rs 8-40** | **10x** |
-| Affiliate payout | Rs 200-500 | **Rs 4k-16k** | **20x** |
-
-**You're targeting a 10-20x larger, higher-paying audience.**
+| **Double Bottom** | 259 | **70.7%** | **+1.73%** |
+| Cup & Handle (Daily) | 11 | 36.4% | -0.37% |
+| Cup & Handle (Monthly) | 4 | 50.0% | +0.09% |
 
 ---
 
-### **Why This Scanner Works:**
+## Daily Workflow
 
-1. **Proven patterns** — Cup & Handle validated by William O'Neil (100+ years of US stock data)
-2. **Same logic as scanner-v3** — already backtested at +1.3% expectancy in India
-3. **US has better liquidity** — tighter spreads, easier fills, less slippage
-4. **More volatile** — bigger swing moves (8-15% vs 5-10% in India)
-
-**If scanner-v3 works in India (+1.3% expectancy), this WILL work in US (expected +1.2-1.5%).**
-
----
-
-## 🎯 Success Criteria
-
-### **Phase 1 (Validation) — THIS WEEK**
-- [ ] Backtest shows +1.0%+ expectancy ✅
-- [ ] Profit factor >1.5 ✅
-- [ ] Max drawdown <30% ✅
-
-### **Phase 2 (Paper Trading) — WEEK 1-2**
-- [ ] Track 20 picks for 2 weeks
-- [ ] Win rate 35-45%
-- [ ] Avg P&L matches backtest
-
-### **Phase 3 (YouTube) — WEEK 3-4**
-- [ ] Post 30 Shorts
-- [ ] Get 10k-100k total views
-- [ ] 50%+ of views from US audience
-
-### **Phase 4 (Revenue) — MONTH 2-3**
-- [ ] 1M+ views/month
-- [ ] Rs 20k+ YouTube revenue
-- [ ] 100+ Discord members (free tier)
-
-### **Phase 5 (Scale) — MONTH 4-6**
-- [ ] 5M+ views/month
-- [ ] Rs 1L+ total revenue (YouTube + affiliates)
-- [ ] Launch premium tier ($10/mo)
-
----
-
-## 🔥 Quick Commands Cheat Sheet
+### Step 1: Refresh stock list (weekly)
 
 ```powershell
-# Daily quick scan (50 stocks, ~2 min)
-python scanner_us.py
+# Check what changed in S&P 500 (no files written)
+python refresh_sp500.py --check
 
-# Weekly full scan (S&P 500, ~10 min) - MTF confirmed only
+# Apply changes (updates sp500.txt + sp500_sectors.json)
+python refresh_sp500.py
+```
+
+This fetches the latest S&P 500 constituents from Wikipedia. New listings (IPOs added to S&P 500) and delistings (bankruptcies, mergers) are automatically picked up.
+
+### Step 2: Run scan
+
+```powershell
+# Quick scan (50 momentum stocks, ~2 min)
+python scanner_us.py --mtf-only
+
+# Full S&P 500 scan (~10 min)
 python scanner_us.py --stocks sp500.txt --top 50 --mtf-only
-
-# Test mode (fast, 10 stocks)
-python scanner_us.py --test --mtf-only
-
-# Verify picks (validate entry/SL/targets)
-python verify_picks.py
-
-# Generate charts with pattern overlay
-python chart_generator_v3.py MSFT
-python chart_generator_v3.py --batch results_us_2026-08-29.csv --top 5
-
-# Sector rotation analysis
-python utils/sector_rotation_us.py
-
-# Custom stock list
-python scanner_us.py --stocks my_watchlist.txt --mtf-only
 ```
 
----
-
-## 💡 Pro Tips
-
-### **Tip 1: Focus on BOOM sectors**
-Stocks in BOOM sectors (Information Technology right now) have highest win rate. Filter picks by sector.
-
-### **Tip 2: NEAR > WATCH**
-NEAR picks (within 5% of breakout) trigger faster and have better R:R than WATCH picks (5-15% away).
-
-### **Tip 3: Weekly > Daily > Monthly**
-Weekly timeframe has best balance of reliability and frequency. Monthly is too slow (triggers once/year). Daily is too noisy.
-
-### **Tip 4: MSFT is ready NOW**
-MSFT is 0.3% from breakout — could trigger tomorrow. This is what you're looking for.
-
-### **Tip 5: GOOGL has insane R:R**
-10x R:R on Weekly, 12.5x on Monthly. This happens when stop is very tight (0.6% risk). Rare but powerful.
-
----
-
-## ❓ FAQs
-
-**Q: Should I run the backtest now or trade live first?**  
-A: **Always backtest first.** Never risk real money on an unvalidated system. The backtest takes 20-30 min but could save you thousands.
-
-**Q: Can I trade these picks in my India broker (Zerodha, Groww)?**  
-A: No. You need a US broker (Webull, Interactive Brokers Global, TD Ameritrade International). OR use this for YouTube content only (no real trading).
-
-**Q: What if backtest fails (expectancy <+1.0%)?**  
-A: Unlikely (same logic as scanner-v3 which has +1.3%). But if it happens, we can tweak ATR multiplier (1.5x-2.5x), stop cap (6-10%), or pattern filters.
-
-**Q: How long until I make money on YouTube?**  
-A: Realistic timeline:
-- Month 1: Rs 2k-10k (learning, testing formats)
-- Month 2-3: Rs 10k-50k (finding viral hooks)
-- Month 4-6: Rs 50k-2L (scaling to 3-5 Shorts/day)
-
----
-
-## 📞 Need Help?
-
-**If backtest fails:** I'll help debug (check pattern detection, stop loss logic, etc.)  
-**If you want YouTube automation:** I can build the Shorts generator script (30 videos in 15 min)  
-**If you have questions:** Just ask
-
----
-
-**Next command to run:**
+### Step 3: Verify picks
 
 ```powershell
-python backtest_us.py --stocks sp500.txt --years 2
+python verify_picks.py
 ```
 
-**Then come back and share the results.** If expectancy is +1.0%+, you're ready to move forward. 🚀
+### Step 4: Generate charts
+
+```powershell
+# Single stock
+python chart_generator_v3.py MSFT
+
+# Top 5 from latest scan
+python chart_generator_v3.py --batch results_us_2026-08-29.csv --top 5
+```
 
 ---
 
-**Created:** 2026-08-28  
-**Status:** VALIDATED (scanner works, sector rotation works, test scan successful)  
-**Next:** Backtest on 2 years of S&P 500 data
+## Backtest Workflow
+
+### First time (fresh download, ~15 min)
+
+```powershell
+# Download 503 stocks + 5 years of data, then backtest
+python visual_backtest.py --stocks sp500.txt --years 5 --visual
+```
+
+Data is cached to `backtest_cache/all_stocks_5y.pkl`. Future runs load from cache (0.5 min).
+
+### After refreshing stock list (incremental, fast)
+
+When you run `refresh_sp500.py` and new stocks are added to S&P 500, you need to download their history too. But you DON'T need to re-download everything:
+
+```powershell
+# Only download NEW stocks, merge into existing cache
+python visual_backtest.py --stocks sp500.txt --years 5 --refresh-cache --visual
+```
+
+This:
+1. Loads existing cache (503 stocks)
+2. Compares with current `sp500.txt`
+3. Downloads ONLY the new stocks (e.g., 2 new = ~10 seconds)
+4. Merges into cache
+5. Runs backtest on all stocks
+
+### How the cache works
+
+| Situation | What happens | Time |
+|---|---|---|
+| First run | Download all 503 stocks | ~3 min |
+| Run again next day | Load from cache (< 24h old) | 0.5 min |
+| Run after `refresh_sp500.py` | `--refresh-cache` downloads only new stocks | ~10 sec per stock |
+| Cache > 24h old | Full re-download | ~3 min |
+
+---
+
+## Command Reference
+
+```powershell
+# === Scans ===
+python scanner_us.py                                    # Backbone 50, top 30
+python scanner_us.py --stocks sp500.txt --top 50        # S&P 500, top 50
+python scanner_us.py --test --mtf-only                  # Test mode (10 stocks)
+python scanner_us.py --mtf-only                         # MTF-confirmed only
+
+# === Backtest ===
+python visual_backtest.py --stocks sp500.txt --years 5 --visual          # Full backtest
+python visual_backtest.py --stocks backbone_us.txt --years 3 --visual    # Backbone 3yr
+python visual_backtest.py --stocks sp500.txt --years 5 --refresh-cache   # Incremental cache update
+python visual_backtest.py --test --years 1 --visual                      # Test mode
+
+# === Stock List Refresh ===
+python refresh_sp500.py --check    # Show what changed (dry run)
+python refresh_sp500.py            # Apply changes to sp500.txt + sectors
+
+# === Charts ===
+python chart_generator_v3.py MSFT                                    # Single stock
+python chart_generator_v3.py --batch results_us_2026-08-29.csv --top 5  # Top 5 from scan
+
+# === Validation ===
+python verify_picks.py              # Validate entry/SL/targets
+
+# === Sector Rotation ===
+python -c "from utils.sector_rotation_us import print_sector_heatmap; print_sector_heatmap()"
+```
+
+---
+
+## Pro Tips
+
+### Tip 1: Refresh stock list monthly
+S&P 500 changes a few times/year. Run `python refresh_sp500.py --check` monthly to see what changed. New IPOs added to S&P 500 could be high-momentum winners.
+
+### Tip 2: Use --refresh-cache after refresh
+After `refresh_sp500.py` adds new stocks, run backtest with `--refresh-cache` to download only the new stocks. Don't re-download all 503.
+
+### Tip 3: Focus on Double Bottom
+259 of 274 backtest trades were Double Bottom (94.5%). 70.7% win rate, +1.73% expectancy. This is the scanner's bread and butter.
+
+### Tip 4: Avoid Cup & Handle Daily
+36.4% win rate, -0.37% expectancy in backtest. Consider disabling or filtering out.
+
+### Tip 5: MTF filter saves you in bear markets
+The weekly 50-SMA filter kept the scanner OUT of the 2022 bear market (10 months of zero trades). This alone prevented major losses.
+
+---
+
+## FAQs
+
+**Q: Do I get new stocks every day?**
+A: You get new **setups** every day (different breakouts, different statuses) from the same stock list. The stock list itself (`sp500.txt`) is static until you run `refresh_sp500.py`.
+
+**Q: How often should I refresh the stock list?**
+A: Monthly is fine. S&P 500 changes a few times/year. Run `python refresh_sp500.py --check` to see what changed.
+
+**Q: What happens to cache when new stocks are added?**
+A: Run `python visual_backtest.py --refresh-cache` — it only downloads the NEW stocks and merges into existing cache. No need to re-download all 503.
+
+**Q: Should I backtest or trade live first?**
+A: **Always backtest first.** The 5-year S&P 500 backtest (274 trades, 69% win rate) gives you confidence the system works.
+
+**Q: Can I trade these in India?**
+A: No. You need a US broker (Webull, Interactive Brokers, TD Ameritrade). OR use for YouTube content only.
+
+---
+
+**Created:** 2026-08-28
+**Updated:** 2026-08-29 (added refresh_sp500.py, incremental cache, .bat files)
+**Status:** VALIDATED (274 trades, 69% win rate, +1.62% expectancy)

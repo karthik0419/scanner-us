@@ -44,13 +44,74 @@ plt.style.use('dark_background')
 # DATA CACHE - Download once, use forever
 # ============================================================================
 
-def download_and_cache(symbols, years):
-    """Download all stock data once and cache to disk"""
+def download_and_cache(symbols, years, refresh=False):
+    """Download all stock data once and cache to disk.
+
+    Args:
+        symbols: List of stock symbols to download
+        years: Number of years of history
+        refresh: If True, merge new stocks into existing cache (incremental).
+                 Only downloads stocks NOT already in cache.
+    """
     os.makedirs(CACHE_DIR, exist_ok=True)
-    
+
     cache_file = os.path.join(CACHE_DIR, f"all_stocks_{years}y.pkl")
-    
-    # Check if cache exists and is fresh (< 24 hours old)
+
+    # --- Incremental refresh mode ---
+    if refresh and os.path.exists(cache_file):
+        print(f"Loading existing cache to find new stocks...")
+        with open(cache_file, 'rb') as f:
+            cached_data = pickle.load(f)
+
+        # Find stocks that are in sp500.txt but NOT in cache
+        new_symbols = [s for s in symbols if s not in cached_data]
+        already_cached = [s for s in symbols if s in cached_data]
+
+        print(f"  Already cached: {len(already_cached)} stocks")
+        print(f"  New stocks to download: {len(new_symbols)}")
+
+        if not new_symbols:
+            print(f"  Cache is up to date — no new stocks to download.")
+            return cached_data
+
+        print(f"\nDownloading {len(new_symbols)} NEW stocks ({years} years)...")
+        print(f"This takes ~{len(new_symbols) * SLEEP_BETWEEN_DOWNLOADS / 60:.1f} minutes")
+        print()
+
+        start_date = datetime.now() - timedelta(days=years * 365 + 100)
+
+        for i, symbol in enumerate(new_symbols, 1):
+            print(f"  [{i}/{len(new_symbols)}] {symbol}...", end='\r')
+            try:
+                time.sleep(SLEEP_BETWEEN_DOWNLOADS)
+                ticker = yf.Ticker(symbol)
+                df = ticker.history(start=start_date, auto_adjust=True)
+
+                if df is not None and not df.empty and len(df) > 100:
+                    df = df.dropna(subset=['Close'])
+                    df['ATR'] = calculate_atr(df)
+                    df_weekly = df.resample('W').agg({
+                        'Open': 'first', 'High': 'max', 'Low': 'min',
+                        'Close': 'last', 'Volume': 'sum'
+                    }).dropna()
+                    df_weekly['ATR'] = calculate_atr(df_weekly)
+                    cached_data[symbol] = {'daily': df, 'weekly': df_weekly}
+            except Exception:
+                pass
+
+        print()
+        new_count = len([s for s in new_symbols if s in cached_data])
+        print(f"Downloaded {new_count}/{len(new_symbols)} new stocks successfully")
+
+        # Save merged cache
+        with open(cache_file, 'wb') as f:
+            pickle.dump(cached_data, f)
+        print(f"Cache updated: {cache_file} ({len(cached_data)} total stocks)")
+        print()
+
+        return cached_data
+
+    # --- Normal mode (fresh download or use existing cache) ---
     if os.path.exists(cache_file):
         mtime = datetime.fromtimestamp(os.path.getmtime(cache_file))
         age = (datetime.now() - mtime).total_seconds() / 3600
@@ -58,23 +119,24 @@ def download_and_cache(symbols, years):
             print(f"Loading cached data ({age:.1f}h old)...")
             with open(cache_file, 'rb') as f:
                 return pickle.load(f)
-    
+
     print(f"Downloading {len(symbols)} stocks ({years} years) - ONE TIME ONLY...")
     print(f"This takes ~{len(symbols) * SLEEP_BETWEEN_DOWNLOADS / 60:.1f} minutes")
     print()
-    
+
     all_data = {}
     start_date = datetime.now() - timedelta(days=years * 365 + 100)
-    
+
     for i, symbol in enumerate(symbols, 1):
         print(f"  [{i}/{len(symbols)}] {symbol}...", end='\r')
-        
+
         try:
             time.sleep(SLEEP_BETWEEN_DOWNLOADS)
             ticker = yf.Ticker(symbol)
             df = ticker.history(start=start_date, auto_adjust=True)
-            
+
             if df is not None and not df.empty and len(df) > 100:
+                df = df.dropna(subset=['Close'])
                 df['ATR'] = calculate_atr(df)
                 # Create weekly resampled
                 df_weekly = df.resample('W').agg({
@@ -82,20 +144,20 @@ def download_and_cache(symbols, years):
                     'Close': 'last', 'Volume': 'sum'
                 }).dropna()
                 df_weekly['ATR'] = calculate_atr(df_weekly)
-                
+
                 all_data[symbol] = {'daily': df, 'weekly': df_weekly}
         except Exception as e:
             pass
-    
+
     print()
     print(f"Downloaded {len(all_data)}/{len(symbols)} stocks successfully")
-    
+
     # Save cache
     with open(cache_file, 'wb') as f:
         pickle.dump(all_data, f)
     print(f"Cache saved to: {cache_file}")
     print()
-    
+
     return all_data
 
 
@@ -331,19 +393,21 @@ class Trade:
         self.days_held = 0
 
 
-def run_backtest(symbols, years, capital=10000, mtf_only=True, visual=False):
+def run_backtest(symbols, years, capital=10000, mtf_only=True, visual=False, refresh=False):
     """Run backtest using cached data"""
-    
+
     print("=" * 70)
     print(f"VISUAL BACKTEST - scanner-us v2.0")
     print("=" * 70)
     print(f"Stocks: {len(symbols)} | Years: {years} | Capital: ${capital:,.0f}")
     print(f"MTF only: {mtf_only} | Scan interval: {SCAN_INTERVAL} days")
+    if refresh:
+        print(f"Cache: INCREMENTAL REFRESH (only download new stocks)")
     print("=" * 70)
     print()
-    
+
     # Step 1: Download/cache data
-    all_data = download_and_cache(symbols, years)
+    all_data = download_and_cache(symbols, years, refresh=refresh)
     
     # Step 2: Generate scan dates (every SCAN_INTERVAL days, starting from first Monday)
     end_date = datetime.now()
@@ -695,18 +759,21 @@ def main():
     parser.add_argument('--mtf-only', action='store_true', default=True)
     parser.add_argument('--no-mtf', action='store_true', help='Include non-MTF trades')
     parser.add_argument('--visual', action='store_true', help='Generate equity curve chart')
+    parser.add_argument('--refresh-cache', action='store_true',
+                        help='Incremental refresh: only download NEW stocks not in cache, merge into existing cache')
     args = parser.parse_args()
-    
+
     with open(args.stocks, 'r') as f:
         symbols = [line.strip() for line in f if line.strip() and not line.startswith('#')]
-    
+
     if args.test:
         symbols = symbols[:10]
         args.years = 1
-    
+
     mtf_only = not args.no_mtf
-    
-    run_backtest(symbols, args.years, args.capital, mtf_only, args.visual)
+
+    run_backtest(symbols, args.years, args.capital, mtf_only, args.visual,
+                 refresh=args.refresh_cache)
 
 
 if __name__ == '__main__':
