@@ -90,19 +90,26 @@ def get_stock_data(symbol, period='2y'):
             'Close': 'last', 'Volume': 'sum'
         }).dropna()
         df_weekly['ATR'] = calculate_atr(df_weekly)
-        
+
+        # Create monthly resampled data
+        df_monthly = df.resample('ME').agg({
+            'Open': 'first', 'High': 'max', 'Low': 'min',
+            'Close': 'last', 'Volume': 'sum'
+        }).dropna()
+        df_monthly['ATR'] = calculate_atr(df_monthly)
+
         info = ticker.info
-        
+
         if info.get('averageVolume', 0) < MIN_VOLUME:
             return None, None, None
         if info.get('marketCap', 0) < MIN_MARKET_CAP:
             return None, None, None
         if df['Close'].iloc[-1] < MIN_PRICE:
             return None, None, None
-        
-        return df, info, df_weekly
+
+        return df, info, df_weekly, df_monthly
     except Exception as e:
-        return None, None, None
+        return None, None, None, None
 
 
 def find_local_minima(series, order=5):
@@ -414,28 +421,37 @@ def scan_stock(symbol):
         result = get_stock_data(symbol)
         if result[0] is None:
             return []
-        df, info, df_weekly = result
-        
+        df, info, df_weekly, df_monthly = result
+
         sector = get_stock_sector(symbol)
         sector_bonus = get_sector_bonus(symbol)
-        
+
         avg_volume = info.get('averageVolume', 1)
         recent_volume = df['Volume'].iloc[-5:].mean()
         volume_ratio = recent_volume / avg_volume if avg_volume > 0 else 1.0
-        
+
         results = []
-        
-        # Cup & Handle (Daily, Weekly, Monthly) - pass df_weekly for MTF
+
+        # Cup & Handle — use the correct timeframe data for each
+        # Daily: daily bars, Weekly: weekly bars, Monthly: monthly bars
+        timeframe_data = {
+            'Daily': df,
+            'Weekly': df_weekly,
+            'Monthly': df_monthly,
+        }
         for timeframe in ['Daily', 'Weekly', 'Monthly']:
-            r = detect_cup_and_handle(df, timeframe, df_weekly)
+            tf_df = timeframe_data[timeframe]
+            if tf_df is None or len(tf_df) < 40:
+                continue
+            r = detect_cup_and_handle(tf_df, timeframe, df_weekly)
             if r:
                 r['symbol'] = symbol
                 r['sector'] = sector
                 r['volume_ratio'] = volume_ratio
                 r['score'] = calculate_score(r, sector_bonus, volume_ratio)
                 results.append(r)
-        
-        # Double Bottom
+
+        # Double Bottom (uses daily data)
         r = detect_double_bottom(df, df_weekly)
         if r:
             r['symbol'] = symbol

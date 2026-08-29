@@ -95,7 +95,12 @@ def download_and_cache(symbols, years, refresh=False):
                         'Close': 'last', 'Volume': 'sum'
                     }).dropna()
                     df_weekly['ATR'] = calculate_atr(df_weekly)
-                    cached_data[symbol] = {'daily': df, 'weekly': df_weekly}
+                    df_monthly = df.resample('ME').agg({
+                        'Open': 'first', 'High': 'max', 'Low': 'min',
+                        'Close': 'last', 'Volume': 'sum'
+                    }).dropna()
+                    df_monthly['ATR'] = calculate_atr(df_monthly)
+                    cached_data[symbol] = {'daily': df, 'weekly': df_weekly, 'monthly': df_monthly}
             except Exception:
                 pass
 
@@ -144,8 +149,14 @@ def download_and_cache(symbols, years, refresh=False):
                     'Close': 'last', 'Volume': 'sum'
                 }).dropna()
                 df_weekly['ATR'] = calculate_atr(df_weekly)
+                # Create monthly resampled
+                df_monthly = df.resample('ME').agg({
+                    'Open': 'first', 'High': 'max', 'Low': 'min',
+                    'Close': 'last', 'Volume': 'sum'
+                }).dropna()
+                df_monthly['ATR'] = calculate_atr(df_monthly)
 
-                all_data[symbol] = {'daily': df, 'weekly': df_weekly}
+                all_data[symbol] = {'daily': df, 'weekly': df_weekly, 'monthly': df_monthly}
         except Exception as e:
             pass
 
@@ -172,39 +183,50 @@ def detect_patterns_at_date(symbol, all_data, scan_date):
     """
     if symbol not in all_data:
         return []
-    
+
     df_full = all_data[symbol]['daily']
-    df_weekly = all_data[symbol]['weekly']
-    
+    df_weekly_full = all_data[symbol]['weekly']
+    df_monthly_full = all_data[symbol].get('monthly')
+
     # Make scan_date timezone-aware to match yfinance data
     from datetime import timezone
     if scan_date.tzinfo is None:
         scan_date = scan_date.replace(tzinfo=timezone.utc)
-    
+
     # Get data up to scan_date only (simulate being on that date)
     df = df_full[df_full.index <= scan_date].copy()
-    df_w = df_weekly[df_weekly.index <= scan_date].copy()
-    
+    df_w = df_weekly_full[df_weekly_full.index <= scan_date].copy() if df_weekly_full is not None else None
+    df_m = df_monthly_full[df_monthly_full.index <= scan_date].copy() if df_monthly_full is not None else None
+
     if len(df) < 100:
         return []
-    
+
     results = []
-    
-    # Cup & Handle (Daily, Weekly, Monthly)
+
+    # Cup & Handle — use the correct timeframe data for each
+    # Daily: daily bars, Weekly: weekly bars, Monthly: monthly bars
+    timeframe_data = {
+        'Daily': df,
+        'Weekly': df_w,
+        'Monthly': df_m,
+    }
     for timeframe in ['Daily', 'Weekly', 'Monthly']:
-        r = detect_cup_handle_at(df, timeframe, df_w)
+        tf_df = timeframe_data[timeframe]
+        if tf_df is None or len(tf_df) < 40:
+            continue
+        r = detect_cup_handle_at(tf_df, timeframe, df_w)
         if r:
             r['symbol'] = symbol
             r['timeframe'] = timeframe
             results.append(r)
-    
-    # Double Bottom
+
+    # Double Bottom (uses daily data)
     r = detect_double_bottom_at(df, df_w)
     if r:
         r['symbol'] = symbol
         r['timeframe'] = 'Daily'
         results.append(r)
-    
+
     return results
 
 
