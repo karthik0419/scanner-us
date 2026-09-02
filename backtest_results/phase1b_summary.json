@@ -1,0 +1,35 @@
+{
+  "config": {
+    "atr_multiplier": 1.5,
+    "target_pct": 0.5,
+    "max_hold": 30,
+    "costs": 0.2
+  },
+  "overall": {
+    "trades": 4875,
+    "wr": 65.39487179487179,
+    "exp": 2.796746001389079,
+    "pf": 3.324760508031429,
+    "avg_win": 6.115083418729997,
+    "avg_loss": -3.4777852480076286,
+    "avg_hold": 8.754666666666667,
+    "median_hold": 6.0,
+    "max_dd": -8.10154134262062,
+    "cagr": 74.34843282152595,
+    "sharpe": 16.261596648151155,
+    "sortino": 40.36778136932017,
+    "calmar": 9.177072568943569,
+    "max_loss_streak": 9,
+    "max_win_streak": 34
+  },
+  "audit": {
+    "same_day_both": "5",
+    "same_day_pct": 0.10256410256410256,
+    "gap_through_sl": "259",
+    "gap_through_tp": "865",
+    "cap_applied": "103",
+    "cap_pct": 2.112820512820513,
+    "mean_risk": 3.1205597382513885,
+    "median_risk": 2.9817221217570635
+  }
+}

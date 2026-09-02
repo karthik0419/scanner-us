@@ -34,7 +34,7 @@ from utils.sector_rotation_us import get_sector_heat, get_stock_sector, get_sect
 # CONFIGURATION
 # ============================================================================
 
-ATR_MULTIPLIER = 2.0
+ATR_MULTIPLIER = 1.5  # Phase 1 validated: 1.5x ATR (was 2.0). PF 3.13 -> 3.54, OOS PF 3.67
 MAX_RISK_PCT = 0.08
 TARGET_1_PCT = 0.50
 TARGET_2_PCT = 1.00

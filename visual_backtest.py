@@ -40,7 +40,7 @@ warnings.filterwarnings('ignore')
 
 CACHE_DIR = "backtest_cache"
 SCAN_INTERVAL = 14  # Scan every 14 days (bi-weekly)
-MAX_HOLD_DAYS = 45
+MAX_HOLD_DAYS = 30  # Phase 1 validated: 30 days (was 45). Most trades resolve in ~9 days anyway
 SLEEP_BETWEEN_DOWNLOADS = 0.3  # Only during initial download
 
 plt.style.use('dark_background')
